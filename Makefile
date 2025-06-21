@@ -17,3 +17,7 @@ clean:
 
 lint:
 	clang-tidy src/*.c src/include/*.h
+
+refresh:
+	make clean
+	make

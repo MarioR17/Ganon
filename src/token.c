@@ -1,11 +1,13 @@
-#include "include/token.h"
+#include "./include/token.h"
 #include <stdlib.h>
+#include <string.h>
 
-token_G* init_token(char* value, int type)
+Token* initToken(char* value, TokenType type)
 {
-    token_G* token = calloc(1, sizeof(struct TOKEN_STRUCT));
-    token->value = value;
-    token->type = type;
+    Token* tok = calloc(1, sizeof(Token));
+    tok->value = strdup(value);
+    tok->type = type;
 
-    return token;
+    return tok;
 }
+
