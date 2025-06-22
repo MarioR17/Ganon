@@ -35,6 +35,6 @@ typedef struct
     TokenType type;
 } Token;
 
-Token* initToken(char* value, TokenType type);
+Token* tokenInit(char* value, TokenType type);
 
 #endif //GN_TOKEN_H

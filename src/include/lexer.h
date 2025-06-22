@@ -11,6 +11,20 @@ typedef struct
     unsigned int cursor_idx;
 } Lexer;
 
-Lexer* initLexer(char* src);
+Lexer* lexerInit(char* src);
+
+void lexerAdvance(Lexer* lex);
+
+void lexerSkipWhitespace(Lexer* lex);
+
+char lexerPeek(const Lexer* lex, const unsigned int offset);
+
+Token* lexerAdvanceWithToken(Lexer* lex, Token* tok);
+
+Token* lexerAdvanceWithCurrent(Lexer* lex, TokenType type);
+
+Token* lexerNextToken(Lexer* lex);
+
+Token* lexerParseId(Lexer* lex);
 
 #endif // GN_LEXER_H

@@ -1,3 +1,4 @@
+#include "include/lexer.h"
 #include <stdio.h>
 #include <stdlib.h>
 
