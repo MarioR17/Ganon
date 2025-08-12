@@ -6,7 +6,11 @@
 
 struct token *token_init(const char *value, enum token_type type)
 {
-        struct token *new_token = malloc(sizeof(struct token));
+        struct token *new_token;
+        size_t value_length;
+        char *value_copy;
+
+        new_token = malloc(sizeof(struct token));
 
         if (new_token == NULL) {
                 fprintf(stderr,
@@ -19,8 +23,8 @@ struct token *token_init(const char *value, enum token_type type)
          *
          * Implemented for portability on even non-POSIX systems.
          */
-        size_t value_length = strlen(value);
-        char *value_copy = malloc(value_length + 1);
+        value_length = strlen(value);
+        value_copy = malloc(value_length + 1);
 
         if (value_copy == NULL) {
                 fprintf(stderr, 
