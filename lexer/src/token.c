@@ -9,7 +9,8 @@ struct token *token_init(const char *value, enum token_type type)
         struct token *new_token = malloc(sizeof(struct token));
 
         if (new_token == NULL) {
-                fprintf(stderr, "Could not allocate memory for new token\n");
+                fprintf(stderr,
+                        "token: new token allocation failed (%d)\n", type);
                 exit(EXIT_FAILURE);
         }
 
@@ -22,7 +23,9 @@ struct token *token_init(const char *value, enum token_type type)
         char *value_copy = malloc(value_length + 1);
 
         if (value_copy == NULL) {
-                fprintf(stderr, "Could not allocate memory for token value\n");
+                fprintf(stderr, 
+                        "token: new token value allocation failed (%s)\n", 
+                        value);
                 free(new_token);
                 exit(EXIT_FAILURE);
         }
