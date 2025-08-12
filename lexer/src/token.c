@@ -12,7 +12,7 @@ struct token *token_init(const char *value, enum token_type type)
 
         new_token = malloc(sizeof(struct token));
 
-        if (new_token == NULL) {
+        if (!new_token) {
                 fprintf(stderr,
                         "token: new token allocation failed `%d`\n", type);
                 goto out;
@@ -26,11 +26,11 @@ struct token *token_init(const char *value, enum token_type type)
         value_length = strlen(value);
         value_copy = malloc(value_length + 1);
 
-        if (value_copy == NULL) {
+        if (!value_copy) {
                 fprintf(stderr, 
                         "token: new token value allocation failed `%s`\n", 
                         value);
-                goto out_free;
+                goto out_free_token;
         }
 
         memcpy(value_copy, value, value_length);
@@ -41,7 +41,7 @@ struct token *token_init(const char *value, enum token_type type)
 
         return new_token;
 
-out_free:
+out_free_token:
         free(new_token);
 out:
         return NULL;
@@ -49,9 +49,8 @@ out:
 
 void token_free(struct token *token)
 {
-        if (token == NULL) {
+        if (!token)
                 return;
-        }
 
         /* strip away the const qualifier with void since we own the memory */
         free((void*)token->value);
