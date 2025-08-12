@@ -10,7 +10,7 @@ struct token *token_init(const char *value, enum token_type type)
 
         if (new_token == NULL) {
                 fprintf(stderr,
-                        "token: new token allocation failed (%d)\n", type);
+                        "token: new token allocation failed `%d`\n", type);
                 exit(EXIT_FAILURE);
         }
 
@@ -24,7 +24,7 @@ struct token *token_init(const char *value, enum token_type type)
 
         if (value_copy == NULL) {
                 fprintf(stderr, 
-                        "token: new token value allocation failed (%s)\n", 
+                        "token: new token value allocation failed `%s`\n", 
                         value);
                 free(new_token);
                 exit(EXIT_FAILURE);
