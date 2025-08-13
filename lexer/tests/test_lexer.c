@@ -1,209 +1,295 @@
-#include <check.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "../../unity/unity.h"
 #include "../include/lexer.h"
 
-/* Helper function to create temporary test files */
-static char *create_temp_file(const char *content)
-{
-    static char template[] = "/tmp/lexer_test_XXXXXX";
-    char *filename = malloc(sizeof(template));
-    strcpy(filename, template);
-    
-    int fd = mkstemp(filename);
-    if (fd == -1) {
-        free(filename);
-        return NULL;
+// Test helper functions for lexer tests
+static void create_test_file(const char *filename, const char *content) {
+    char filepath[256];
+    const char *temp_dir = getenv("TEST_TEMP_DIR");
+    if (temp_dir) {
+        snprintf(filepath, sizeof(filepath), "%s/%s", temp_dir, filename);
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s", filename);
     }
     
-    write(fd, content, strlen(content));
-    close(fd);
-    
-    return filename;
+    FILE *fp = fopen(filepath, "w");
+    if (fp) {
+        fprintf(fp, "%s", content);
+        fclose(fp);
+    }
 }
 
-/* Unit Tests for Lexer Module */
+static void cleanup_test_file(const char *filename) {
+    char filepath[256];
+    const char *temp_dir = getenv("TEST_TEMP_DIR");
+    if (temp_dir) {
+        snprintf(filepath, sizeof(filepath), "%s/%s", temp_dir, filename);
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s", filename);
+    }
+    remove(filepath);
+}
 
-START_TEST(test_lexer_init_valid_file)
-{
-    char *filename = create_temp_file("int main() { return 0; }");
-    ck_assert_ptr_nonnull(filename);
+static const char* get_test_filepath(const char *filename) {
+    static char filepath[256];
+    const char *temp_dir = getenv("TEST_TEMP_DIR");
+    if (temp_dir) {
+        snprintf(filepath, sizeof(filepath), "%s/%s", temp_dir, filename);
+    } else {
+        snprintf(filepath, sizeof(filepath), "%s", filename);
+    }
+    return filepath;
+}
+
+// LEXER INITIALIZATION TESTS
+void test_lexer_init_valid_file(void) {
+    const char *filename = "test_valid.txt";
+    const char *content = "hello world";
     
-    struct lexer *lex = lexer_init(filename);
+    create_test_file(filename, content);
     
-    ck_assert_ptr_nonnull(lex);
-    ck_assert_ptr_nonnull(lex->input);
-    ck_assert_str_eq(lex->input, "int main() { return 0; }");
-    ck_assert_int_eq(lex->pos, 0);
-    ck_assert_int_eq(lex->cursor, 'i');
-    ck_assert_int_eq(lex->line, 1);
-    ck_assert_int_eq(lex->col, 1);
+    struct lexer *lex = lexer_init(get_test_filepath(filename));
+    
+    TEST_ASSERT_NOT_NULL(lex);
+    TEST_ASSERT_NOT_NULL(lex->input);
+    TEST_ASSERT_EQUAL_STRING(content, lex->input);
+    TEST_ASSERT_EQUAL('h', lex->cursor);
+    TEST_ASSERT_EQUAL(0, lex->pos);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
     
     lexer_free(lex);
-    unlink(filename);
-    free(filename);
+    cleanup_test_file(filename);
 }
-END_TEST
 
-START_TEST(test_lexer_init_empty_file)
-{
-    char *filename = create_temp_file("");
-    ck_assert_ptr_nonnull(filename);
+void test_lexer_init_invalid_file(void) {
+    struct lexer *lex = lexer_init("nonexistent_file_12345.txt");
+    TEST_ASSERT_NULL(lex);
+}
+
+void test_lexer_init_empty_file(void) {
+    const char *filename = "test_empty.txt";
     
-    struct lexer *lex = lexer_init(filename);
+    create_test_file(filename, "");
     
-    ck_assert_ptr_nonnull(lex);
-    ck_assert_ptr_nonnull(lex->input);
-    ck_assert_str_eq(lex->input, "");
-    ck_assert_int_eq(lex->pos, 0);
-    ck_assert_int_eq(lex->cursor, '\0');
-    ck_assert_int_eq(lex->line, 1);
-    ck_assert_int_eq(lex->col, 1);
+    struct lexer *lex = lexer_init(get_test_filepath(filename));
+    
+    TEST_ASSERT_NOT_NULL(lex);
+    TEST_ASSERT_EQUAL('\0', lex->cursor);
+    TEST_ASSERT_EQUAL(0, lex->pos);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
     
     lexer_free(lex);
-    unlink(filename);
-    free(filename);
+    cleanup_test_file(filename);
 }
-END_TEST
 
-START_TEST(test_lexer_init_nonexistent_file)
-{
-    struct lexer *lex = lexer_init("/nonexistent/file.txt");
-    ck_assert_ptr_null(lex);
-}
-END_TEST
-
-START_TEST(test_lexer_advance_basic)
-{
-    char *filename = create_temp_file("abc");
+void test_lexer_init_single_character_file(void) {
+    const char *filename = "test_single.txt";
+    const char *content = "x";
+    
+    create_test_file(filename, content);
+    
     struct lexer *lex = lexer_init(filename);
     
-    ck_assert_int_eq(lex->cursor, 'a');
-    ck_assert_int_eq(lex->pos, 0);
-    ck_assert_int_eq(lex->col, 1);
+    TEST_ASSERT_NOT_NULL(lex);
+    TEST_ASSERT_EQUAL('x', lex->cursor);
+    TEST_ASSERT_EQUAL(0, lex->pos);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
+    
+    lexer_free(lex);
+    cleanup_test_file(filename);
+}
+
+// LEXER ADVANCE TESTS
+void test_lexer_advance_basic(void) {
+    const char *filename = "test_advance_basic.txt";
+    const char *content = "abc";
+    
+    create_test_file(filename, content);
+    
+    struct lexer *lex = lexer_init(filename);
+    
+    // Initial state: 'a'
+    TEST_ASSERT_EQUAL('a', lex->cursor);
+    TEST_ASSERT_EQUAL(0, lex->pos);
+    TEST_ASSERT_EQUAL(1, lex->col);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    
+    // Advance to 'b'
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('b', lex->cursor);
+    TEST_ASSERT_EQUAL(1, lex->pos);
+    TEST_ASSERT_EQUAL(2, lex->col);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    
+    // Advance to 'c'
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('c', lex->cursor);
+    TEST_ASSERT_EQUAL(2, lex->pos);
+    TEST_ASSERT_EQUAL(3, lex->col);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    
+    lexer_free(lex);
+    cleanup_test_file(filename);
+}
+
+void test_lexer_advance_with_newlines(void) {
+    const char *filename = "test_advance_newlines.txt";
+    const char *content = "line1\nline2\nline3";
+    
+    create_test_file(filename, content);
+    
+    struct lexer *lex = lexer_init(filename);
+    
+    // Start: 'l' at line 1, col 1
+    TEST_ASSERT_EQUAL('l', lex->cursor);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
+    
+    // Advance through "line1"
+    for (int i = 0; i < 4; i++) {
+        lexer_advance(lex);
+    }
+    TEST_ASSERT_EQUAL('1', lex->cursor);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(5, lex->col);
+    
+    // Advance to '\n'
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\n', lex->cursor);
+    TEST_ASSERT_EQUAL(1, lex->line);
+    TEST_ASSERT_EQUAL(6, lex->col);
+    
+    // Advance past newline - should increment line, reset col
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('l', lex->cursor);
+    TEST_ASSERT_EQUAL(2, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
+    
+    lexer_free(lex);
+    cleanup_test_file(filename);
+}
+
+void test_lexer_advance_to_end_of_input(void) {
+    const char *filename = "test_advance_end.txt";
+    const char *content = "xy";
+    
+    create_test_file(filename, content);
+    
+    struct lexer *lex = lexer_init(filename);
+    
+    // Advance to 'y'
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('y', lex->cursor);
+    
+    // Advance to end
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\0', lex->cursor);
+    
+    // Position should be at end
+    TEST_ASSERT_EQUAL(2, lex->pos);
+    
+    lexer_free(lex);
+    cleanup_test_file(filename);
+}
+
+void test_lexer_advance_past_end_of_input(void) {
+    const char *filename = "test_advance_past_end.txt";
+    const char *content = "z";
+    
+    create_test_file(filename, content);
+    
+    struct lexer *lex = lexer_init(filename);
+    
+    // Advance to end
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\0', lex->cursor);
+    
+    // Try to advance past end - should not change position
+    size_t old_pos = lex->pos;
+    size_t old_line = lex->line;
+    size_t old_col = lex->col;
     
     lexer_advance(lex);
-    ck_assert_int_eq(lex->cursor, 'b');
-    ck_assert_int_eq(lex->pos, 1);
-    ck_assert_int_eq(lex->col, 2);
-    
-    lexer_advance(lex);
-    ck_assert_int_eq(lex->cursor, 'c');
-    ck_assert_int_eq(lex->pos, 2);
-    ck_assert_int_eq(lex->col, 3);
-    
-    lexer_advance(lex);
-    ck_assert_int_eq(lex->cursor, '\0');
-    ck_assert_int_eq(lex->pos, 3);
-    ck_assert_int_eq(lex->col, 4);
+    TEST_ASSERT_EQUAL('\0', lex->cursor);
+    TEST_ASSERT_EQUAL(old_pos, lex->pos);
+    TEST_ASSERT_EQUAL(old_line, lex->line);
+    TEST_ASSERT_EQUAL(old_col, lex->col);
     
     lexer_free(lex);
-    unlink(filename);
-    free(filename);
+    cleanup_test_file(filename);
 }
-END_TEST
 
-START_TEST(test_lexer_advance_newlines)
-{
-    char *filename = create_temp_file("a\nb\nc");
+void test_lexer_advance_multiple_newlines(void) {
+    const char *filename = "test_multiple_newlines.txt";
+    const char *content = "a\n\n\nb";
+    
+    create_test_file(filename, content);
+    
     struct lexer *lex = lexer_init(filename);
     
-    ck_assert_int_eq(lex->cursor, 'a');
-    ck_assert_int_eq(lex->line, 1);
-    ck_assert_int_eq(lex->col, 1);
+    // Start at 'a'
+    TEST_ASSERT_EQUAL('a', lex->cursor);
+    TEST_ASSERT_EQUAL(1, lex->line);
     
-    lexer_advance(lex); /* move to \n */
-    ck_assert_int_eq(lex->cursor, '\n');
-    ck_assert_int_eq(lex->line, 1);
-    ck_assert_int_eq(lex->col, 2);
-    
-    lexer_advance(lex); /* move to 'b', line should increment */
-    ck_assert_int_eq(lex->cursor, 'b');
-    ck_assert_int_eq(lex->line, 2);
-    ck_assert_int_eq(lex->col, 1);
-    
-    lexer_advance(lex); /* move to \n */
-    lexer_advance(lex); /* move to 'c' */
-    ck_assert_int_eq(lex->cursor, 'c');
-    ck_assert_int_eq(lex->line, 3);
-    ck_assert_int_eq(lex->col, 1);
-    
-    lexer_free(lex);
-    unlink(filename);
-    free(filename);
-}
-END_TEST
-
-START_TEST(test_lexer_advance_past_end)
-{
-    char *filename = create_temp_file("a");
-    struct lexer *lex = lexer_init(filename);
-    
-    lexer_advance(lex); /* move to '\0' */
-    ck_assert_int_eq(lex->cursor, '\0');
-    
-    /* Advancing past end should not crash but should print error */
+    // First newline
     lexer_advance(lex);
-    ck_assert_int_eq(lex->cursor, '\0');
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\n', lex->cursor);
+    TEST_ASSERT_EQUAL(2, lex->line);
+    
+    // Second newline
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\n', lex->cursor);
+    TEST_ASSERT_EQUAL(3, lex->line);
+    
+    // Third newline
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('\n', lex->cursor);
+    TEST_ASSERT_EQUAL(4, lex->line);
+    
+    // Finally 'b'
+    lexer_advance(lex);
+    TEST_ASSERT_EQUAL('b', lex->cursor);
+    TEST_ASSERT_EQUAL(5, lex->line);
+    TEST_ASSERT_EQUAL(1, lex->col);
     
     lexer_free(lex);
-    unlink(filename);
-    free(filename);
+    cleanup_test_file(filename);
 }
-END_TEST
 
-START_TEST(test_lexer_advance_null_lexer)
-{
-    /* Should not crash */
-    lexer_advance(NULL);
-}
-END_TEST
-
-START_TEST(test_lexer_free_null)
-{
-    /* Should not crash */
+// LEXER EDGE CASE TESTS
+void test_lexer_free_null(void) {
+    // Should not crash
     lexer_free(NULL);
+    TEST_PASS();
 }
-END_TEST
 
-START_TEST(test_lexer_free_valid)
-{
-    char *filename = create_temp_file("test");
-    struct lexer *lex = lexer_init(filename);
-    ck_assert_ptr_nonnull(lex);
-    
-    /* Should not crash */
-    lexer_free(lex);
-    
-    unlink(filename);
-    free(filename);
+void test_lexer_advance_null(void) {
+    // Should not crash
+    lexer_advance(NULL);
+    TEST_PASS();
 }
-END_TEST
 
-Suite *lexer_suite(void)
-{
-    Suite *s;
-    TCase *tc_core, *tc_edge;
-    
-    s = suite_create("Lexer");
-    
-    tc_core = tcase_create("Core");
-    tcase_add_test(tc_core, test_lexer_init_valid_file);
-    tcase_add_test(tc_core, test_lexer_init_empty_file);
-    tcase_add_test(tc_core, test_lexer_advance_basic);
-    tcase_add_test(tc_core, test_lexer_advance_newlines);
-    tcase_add_test(tc_core, test_lexer_free_valid);
-    
-    tc_edge = tcase_create("EdgeCases");
-    tcase_add_test(tc_edge, test_lexer_init_nonexistent_file);
-    tcase_add_test(tc_edge, test_lexer_advance_past_end);
-    tcase_add_test(tc_edge, test_lexer_advance_null_lexer);
-    tcase_add_test(tc_edge, test_lexer_free_null);
-    
-    suite_add_tcase(s, tc_core);
-    suite_add_tcase(s, tc_edge);
-    
-    return s;
+void test_lexer_advance_null_input(void) {
+    // Create a lexer manually with NULL input to test robustness
+    struct lexer *lex = malloc(sizeof(struct lexer));
+    if (lex) {
+        lex->input = NULL;
+        lex->pos = 0;
+        lex->cursor = '\0';
+        lex->line = 1;
+        lex->col = 1;
+        
+        // Should not crash
+        lexer_advance(lex);
+        TEST_PASS();
+        
+        free(lex);
+    }
 }
