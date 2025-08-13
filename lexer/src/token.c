@@ -52,7 +52,6 @@ void token_free(struct token *token)
         if (!token)
                 return;
 
-        /* strip away the const qualifier with void since we own the memory */
         free((void*)token->value);
         free(token);
 }
