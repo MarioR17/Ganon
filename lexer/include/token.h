@@ -14,6 +14,7 @@ enum token_type {
         TOKEN_LESS_THAN,
         TOKEN_GREATER_THAN,
         TOKEN_EQUALS,
+        TOKEN_ASSIGN,
         TOKEN_NOT_EQUALS,
         TOKEN_SEMI_COLON,
         TOKEN_COLON,

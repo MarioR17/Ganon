@@ -12,7 +12,8 @@ struct lexer *lexer_init(const char *filename)
         fp = fopen(filename, "rb");
 
         if (!fp) {
-                fprintf(stderr, "lexer: could not open file `%s`\n", filename);
+                fprintf(stderr, "lexer: could not open file `%s`\n", 
+                        filename);
                 goto out;
         }
 
@@ -85,14 +86,13 @@ void lexer_advance(struct lexer *lexer)
                 return;
         }
 
-        lexer->pos++;
-
-        lexer->cursor = lexer->input[lexer->pos];
-
         if (lexer->cursor == '\n') {
                 lexer->line++;
                 lexer->col = 1;
         } else {
                 lexer->col++;
         }
+
+        lexer->pos++;
+        lexer->cursor = lexer->input[lexer->pos];
 }
